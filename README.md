@@ -12,7 +12,7 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 
 |Parameter|Description|
 |-----|-----|
-|`issueToken`|Instructions of how to obtain them are [here](https://github.com/chrisjshull/homebridge-nest#using-a-google-account)|
+|`issueToken`|Instructions of how to obtain them are [here](https://github.com/chrisjshull/homebridge-nest#using-a-google-account)<br/><br/ **This will have to be one only once**|
 |`cookies`|Same as above |
 |`apiKey`|Same as above |
 |`path`|Absolute path to local folder where content needs to be stored.<br/><br/>Default is the script path.|
@@ -67,4 +67,4 @@ On macOS, run  `pip install certifi` and then `/Applications/Python\ 3.6/Install
 
 ## Acknowledgement
 
-Thanks to gboudreau/nest-api for G authentication, and dend/foggycam for the idea and capturing and video conversion.
+Thanks to gboudreau/nest-api for G authentication, and dend/foggycam for the idea + the code for capturing images and video conversion.

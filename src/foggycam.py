@@ -16,6 +16,13 @@ import shutil
 import requests
 from re import search as re_search
 
+# TODO: bug fix: image left behind when a video gets created
+# TODO: check if magicstick tool is available and move out the check for ffmpeg and "skip" tool usage where needed
+# TODO: refactor jpg clean off (CPU intensive) with bash shell 'rm -f'
+# TODO: exclude cameras
+# TODO: bundle the folders creation
+# TODO: retention period for files and videos
+
 
 class FoggyCam(object):
   """FoggyCam client class that performs capture operations."""
@@ -25,7 +32,6 @@ class FoggyCam(object):
   nest_access_token_expiration = ''
 
   nest_user_url = 'https://home.nest.com/api/0.1/user/#USERID#/app_launch'
-  # nest_image_url = 'https://nexusapi-us1.camera.home.nest.com/get_image?uuid=#CAMERAID#&width=#WIDTH#&cachebuster=#CBUSTER#'
   nest_image_url = 'https://nexusapi-#REGION#.camera.home.nest.com/get_image?uuid=#CAMERAID#&width=#WIDTH#&cachebuster=#CBUSTER#'
   nest_auth_url = 'https://nestauthproxyservice-pa.googleapis.com/v1/issue_jwt'
   user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36'
@@ -55,6 +61,7 @@ class FoggyCam(object):
 
     self.local_path = os.path.dirname(os.path.abspath(__file__))
     self.temp_dir_path = os.path.join(self.local_path, '_temp')
+    self.nest_camera_buffer_threshold = self.config.threshold or self.nest_camera_buffer_threshold
 
     self.get_authorisation()
     self.initialize_user()
@@ -80,6 +87,10 @@ class FoggyCam(object):
             f"<> PARAMS: {params}\n"
             f"<> RECEIVED ERROR: \n{all_error}")
       return False, all_error
+
+  @staticmethod
+  def now_time(form='%Y-%m-%d %H:%M:%S'):
+    return datetime.now().strftime(form)
 
   def get_authorisation(self):
     """
@@ -144,7 +155,6 @@ class FoggyCam(object):
 
     print("<> Getting user's nest cameras assets ...")
 
-
     headers = {
       'Authorization': f"Basic {self.nest_access_token}",
       'Content-Type': 'application/json'
@@ -187,17 +197,15 @@ class FoggyCam(object):
                 f"STATE: '{camera['streaming_state']}'")
           self.nest_camera_array.append(camera)
 
-  def capture_images(self):
+  def capture_images(self, capture=True):
     """Starts the multi-threaded image capture process."""
 
     print('<> INFO: Capturing images...')
 
-    self.is_capturing = True
+    self.is_capturing = capture
 
     if not os.path.exists('capture'):
       os.makedirs('capture')
-
-    self.nest_camera_buffer_threshold = self.config.threshold
 
     for camera in self.nest_camera_array:
       camera_path = ''
@@ -263,16 +271,16 @@ class FoggyCam(object):
         if resp.status_code == 200:
 
           try:
-            time.sleep(6)
+            # time.sleep(self.config.frame_rate/60)
+            time.sleep(0.1)
 
             with open(camera_path + '/' + file_id + '.jpg', 'wb') as image_file:
               image_file.write(resp.content)
 
             # Add overlay text
-            now = datetime.now()
-            tstamp = now.strftime("%Y-%m-%d %H:%M:%S")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             overlay_text = shsplit(f"/usr/bin/convert {camera_path}/{file_id}.jpg -pointsize 36 -fill white "
-                                   f"-stroke black -annotate +40+40 '{tstamp}' {camera_path}/{file_id}.jpg")
+                                   f"-stroke black -annotate +40+40 '{now}' {camera_path}/{file_id}.jpg")
             # print(f"<> DEBUG: overlay_text: \n {overlay_text}")
             call(overlay_text, shell=False)
 
@@ -280,8 +288,8 @@ class FoggyCam(object):
             if self.config.produce_video:
               camera_buffer_size = len(camera_buffer[camera['uuid']])
               print(
-                '<> INFO [', threading.current_thread().name, '] Camera buffer size for',
-                camera_name, ': ', camera_buffer_size
+                f"<> INFO: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [ {threading.current_thread().name} ] "
+                f"Camera buffer size for {camera_name}: {camera_buffer_size}"
               )
 
               if camera_buffer_size < self.nest_camera_buffer_threshold:
@@ -313,12 +321,12 @@ class FoggyCam(object):
 
                 if use_terminal or (os.path.isfile(ffmpeg_path) and use_terminal is False):
                   print('<> INFO: Found ffmpeg. Processing video!')
-                  target_video_path = os.path.join(video_path, file_id + '.mp4')
+                  target_video_path = os.path.join(video_path, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.mp4')
                   process = Popen([
                     ffmpeg_path, '-r', str(self.config.frame_rate), '-f', 'concat', '-safe', '0', '-i',
                     concat_file_name, '-vcodec', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p',
                     target_video_path
-                  ], stdout=PIPE, stderr=PIPE)
+                  ], close_fds=False, start_new_session=True, stdout=PIPE, stderr=PIPE)
                   err, out = process.communicate()
                   # print(f"<> DEBUG: video creation \nO: {out} \nE: {err}")
                   os.remove(concat_file_name)
@@ -361,10 +369,12 @@ class FoggyCam(object):
         else:
           if resp.status_code == 404:
             # if camera is offline
-            print(f"<> WARNING: Camera recording for '{camera_name}' not available.")
+            print(f"<> WARNING: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Camera recording for '{camera_name}' "
+                  f"not available.")
             time.sleep(self.cam_retry_wait)
           elif resp.status_code == 403:
             # Renew auth token
+            print(f"<> DEBUG: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} status '{resp.reason}' token expired renewing ...")
             self.get_authorisation()
 
           else:
