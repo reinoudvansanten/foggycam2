@@ -14,6 +14,7 @@ from datetime import datetime
 from azurestorageprovider import AzureStorageProvider
 import shutil
 import requests
+from re import search as re_search
 
 
 class FoggyCam(object):
@@ -24,7 +25,8 @@ class FoggyCam(object):
   nest_access_token_expiration = ''
 
   nest_user_url = 'https://home.nest.com/api/0.1/user/#USERID#/app_launch'
-  nest_image_url = 'https://nexusapi-us1.camera.home.nest.com/get_image?uuid=#CAMERAID#&width=#WIDTH#&cachebuster=#CBUSTER#'
+  # nest_image_url = 'https://nexusapi-us1.camera.home.nest.com/get_image?uuid=#CAMERAID#&width=#WIDTH#&cachebuster=#CBUSTER#'
+  nest_image_url = 'https://nexusapi-#REGION#.camera.home.nest.com/get_image?uuid=#CAMERAID#&width=#WIDTH#&cachebuster=#CBUSTER#'
   nest_auth_url = 'https://nestauthproxyservice-pa.googleapis.com/v1/issue_jwt'
   user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36'
 
@@ -165,10 +167,20 @@ class FoggyCam(object):
         bucket_id = bucket['object_key']
         if bucket_id.startswith('quartz.'):
           print("<> INFO: Detected camera configuration.")
+
+          # Attempt to get cameras API region
+          try:
+            nexus_api_http_server_url = bucket['value']['nexus_api_http_server_url']
+            region = re_search('https://nexusapi-(.+?).dropcam.com', nexus_api_http_server_url).group(1)
+          except AttributeError:
+            # Failed to find region - default back to us1
+            region = 'us1'
+
           camera = {
             'name': bucket['value']['description'].replace(' ', '_'),
             'uuid': bucket_id.replace('quartz.', ''),
-            'streaming_state': bucket['value']['streaming_state']
+            'streaming_state': bucket['value']['streaming_state'],
+            'region': region
           }
           # print(f"<> DEBUG: {bucket}")
           print(f"<> INFO: Camera Name: '{camera['name']}' UUID: '{camera['uuid']}' "
@@ -229,8 +241,11 @@ class FoggyCam(object):
 
       print('<> INFO: Applied cache buster: ', utc_millis_str)
 
-      image_url = self.nest_image_url.replace(
-        '#CAMERAID#', camera['uuid']).replace('#CBUSTER#', utc_millis_str).replace('#WIDTH#', str(self.config.width))
+      image_url = self.nest_image_url.replace('#CAMERAID#', camera['uuid'])
+      image_url = image_url.replace('#CBUSTER#', utc_millis_str)
+      image_url = image_url.replace('#WIDTH#', str(self.config.width))
+      image_url = image_url.replace('#REGION#', camera['region'])
+      # print(f"<> DEBUG: image URL: {image_url}")
 
       headers = {
         'Origin': 'https://home.nest.com',
@@ -346,7 +361,7 @@ class FoggyCam(object):
         else:
           if resp.status_code == 404:
             # if camera is offline
-            print(f"<> WARNING: Camera recording for '{camera}' not available.")
+            print(f"<> WARNING: Camera recording for '{camera_name}' not available.")
             time.sleep(self.cam_retry_wait)
           elif resp.status_code == 403:
             # Renew auth token
