@@ -12,18 +12,21 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 
 |Parameter|Description|
 |-----|-----|
-|`username`|Nest account username.|
-|`password`|Nest account password.|
+|`issueToken`|Instructions of how to obtain them are [here](https://github.com/chrisjshull/homebridge-nest#using-a-google-account)|
+|`cookies`|Same as above |
+|`apiKey`|Same as above |
 |`path`|Absolute path to local folder where content needs to be stored.<br/><br/>Default is the script path.|
 |`frame_rate`|Frame rate for the generated video.<br/><br/>Default is 24.|
 |`threshold`|Number of images that need to be combined in a video in a single buffer.<br/><br/>Default is 200.|
 |`width`|Image width for the capture image.<br/><br/>Default is 1280.|
+|`cam_retry_wait`|Determines how long to wait once the camera has been detected offline.<br/><br/>Default is 60 seconds.|
 |`clear_images`|Determines whether images are removed after video is produced.<br/><br/>Default is false.|
 |`produce_video`|Determines whether a video is generated after a threshold of captured images is hit.<br/><br/>Default is false.|
 |`upload_to_azure`|Determines whether the final video will be uploaded to Azure Storage.<br/><br/>Default is false.|
 |`az_account_name`|Name of the Azure Storage account.|
 |`az_sas_token`|SAS token for the Azure Storage account. Should have `write`, `list` and `read` permissions.|
 
+**Note** Camera labels will be used if available! 
 
 **If you want to generate video**, you will need to [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
 
@@ -44,7 +47,7 @@ brew install ffmpeg
 Make sure you install the requirements for the project, by `cd`-ing in the folder with the project, and running:
 
 ```
-pip install -r requirements.txt
+pip3 install -r src/requirements.txt
 ```
 
 Run `python start.py` after you configured the settings above. Exit by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd>.
@@ -60,3 +63,8 @@ No claims are made in regards to the stability of the application, or its applic
 ## Getting `urlopen error [SSL: CERTIFICATE_VERIFY_FAILED]`
 
 On macOS, run  `pip install certifi` and then `/Applications/Python\ 3.6/Install\ Certificates.command`.
+
+
+## Acknowledgement
+
+Thanks to gboudreau/nest-api for G authentication, and dend/foggycam for the idea and capturing and video conversion.

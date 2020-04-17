@@ -12,5 +12,6 @@ config.json
 
 \.vscode/
 
+.idea
 *.pyc
 *.bin
