@@ -22,6 +22,7 @@ from re import search as re_search
 # TODO: exclude cameras
 # TODO: bundle the folders creation
 # TODO: retention period for files and videos
+# TODO: add logs and restructure printing
 
 
 class FoggyCam(object):
@@ -200,7 +201,7 @@ class FoggyCam(object):
   def capture_images(self, capture=True):
     """Starts the multi-threaded image capture process."""
 
-    print('<> INFO: Capturing images...')
+    print(f"<> INFO: {self.now_time()} Capturing images ...")
 
     self.is_capturing = capture
 
@@ -240,19 +241,18 @@ class FoggyCam(object):
     """Captures images and generates the video from them."""
 
     camera_buffer = defaultdict(list)
+    image_url = self.nest_image_url.replace('#CAMERAID#', camera['uuid']
+                                            ).replace('#WIDTH#', str(self.config.width)
+                                                      ).replace('#REGION#', camera['region'])
 
     while self.is_capturing:
       file_id = str(uuid.uuid4().hex)
-
       utc_date = datetime.utcnow()
       utc_millis_str = str(int(utc_date.timestamp())*1000)
 
-      print('<> INFO: Applied cache buster: ', utc_millis_str)
+      print(f"<> INFO: {self.now_time()} Applied cache buster: {utc_millis_str}")
 
-      image_url = self.nest_image_url.replace('#CAMERAID#', camera['uuid'])
       image_url = image_url.replace('#CBUSTER#', utc_millis_str)
-      image_url = image_url.replace('#WIDTH#', str(self.config.width))
-      image_url = image_url.replace('#REGION#', camera['region'])
       # print(f"<> DEBUG: image URL: {image_url}")
 
       headers = {
@@ -278,9 +278,8 @@ class FoggyCam(object):
               image_file.write(resp.content)
 
             # Add overlay text
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             overlay_text = shsplit(f"/usr/bin/convert {camera_path}/{file_id}.jpg -pointsize 36 -fill white "
-                                   f"-stroke black -annotate +40+40 '{now}' {camera_path}/{file_id}.jpg")
+                                   f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' {camera_path}/{file_id}.jpg")
             # print(f"<> DEBUG: overlay_text: \n {overlay_text}")
             call(overlay_text, shell=False)
 
@@ -288,7 +287,7 @@ class FoggyCam(object):
             if self.config.produce_video:
               camera_buffer_size = len(camera_buffer[camera['uuid']])
               print(
-                f"<> INFO: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} [ {threading.current_thread().name} ] "
+                f"<> INFO: {self.now_time()} [ {threading.current_thread().name} ] "
                 f"Camera buffer size for {camera_name}: {camera_buffer_size}"
               )
 
@@ -321,7 +320,7 @@ class FoggyCam(object):
 
                 if use_terminal or (os.path.isfile(ffmpeg_path) and use_terminal is False):
                   print('<> INFO: Found ffmpeg. Processing video!')
-                  target_video_path = os.path.join(video_path, datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + '.mp4')
+                  target_video_path = os.path.join(video_path, self.now_time("%Y-%m-%d_%H-%M-%S") + '.mp4')
                   process = Popen([
                     ffmpeg_path, '-r', str(self.config.frame_rate), '-f', 'concat', '-safe', '0', '-i',
                     concat_file_name, '-vcodec', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p',
@@ -369,12 +368,12 @@ class FoggyCam(object):
         else:
           if resp.status_code == 404:
             # if camera is offline
-            print(f"<> WARNING: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} Camera recording for '{camera_name}' "
+            print(f"<> WARNING: {self.now_time()} Camera recording for '{camera_name}' "
                   f"not available.")
             time.sleep(self.cam_retry_wait)
           elif resp.status_code == 403:
             # Renew auth token
-            print(f"<> DEBUG: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} status '{resp.reason}' token expired renewing ...")
+            print(f"<> DEBUG: {self.now_time()} status '{resp.reason}' token expired renewing ...")
             self.get_authorisation()
 
           else:
