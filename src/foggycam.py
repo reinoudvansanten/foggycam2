@@ -16,9 +16,9 @@ import shutil
 import requests
 from re import search as re_search
 
-# TODO: bug fix: image left behind when a video gets created
 # TODO: check if magicstick tool is available and move out the check for ffmpeg and "skip" tool usage where needed
 # TODO: refactor jpg clean off (CPU intensive) with bash shell 'rm -f'
+# TODO: move image compression into a separate threed as recording is posed while compressing
 # TODO: exclude cameras
 # TODO: bundle the folders creation
 # TODO: retention period for files and videos
@@ -30,7 +30,7 @@ class FoggyCam(object):
 
   nest_user_id = ''
   nest_access_token = ''
-  nest_access_token_expiration = ''
+  # nest_access_token_expiration = ''
 
   nest_user_url = 'https://home.nest.com/api/0.1/user/#USERID#/app_launch'
   nest_image_url = 'https://nexusapi-#REGION#.camera.home.nest.com/get_image?uuid=#CAMERAID#&width=#WIDTH#&cachebuster=#CBUSTER#'
@@ -53,7 +53,6 @@ class FoggyCam(object):
   def __init__(self, config):
     self.config = config
     self.nest_access_token = None
-    self.nest_access_token_expiration = None
 
     if not os.path.exists('_temp'):
       os.makedirs('_temp')
@@ -139,7 +138,7 @@ class FoggyCam(object):
     if status:
       try:
         self.nest_access_token = resp.json().get('jwt')
-        self.nest_access_token_expiration = resp.json().get('claims').get('expirationTime')
+        # self.nest_access_token_expiration = resp.json().get('claims').get('expirationTime')
         self.nest_user_id = resp.json().get('claims').get('subject').get('nestId').get('id')
       except Exception as jwt_error:
         print(f"ERROR: failed to get JWT access token with error: \n{jwt_error}")
@@ -231,11 +230,11 @@ class FoggyCam(object):
 
       image_thread = threading.Thread(target=self.perform_capture,
                                       args=(camera, camera_name, camera_path, video_path))
-      image_thread.daemon = True
+      # image_thread.daemon = True
       image_thread.start()
 
-    while True:
-      time.sleep(1)
+    # while True:
+    #   time.sleep(1)
 
   def perform_capture(self, camera, camera_name, camera_path='', video_path=''):
     """Captures images and generates the video from them."""
@@ -247,6 +246,7 @@ class FoggyCam(object):
 
     while self.is_capturing:
       file_id = str(uuid.uuid4().hex)
+      image_path = f"{camera_path}/{file_id}.jpg"
       utc_date = datetime.utcnow()
       utc_millis_str = str(int(utc_date.timestamp())*1000)
 
@@ -267,23 +267,22 @@ class FoggyCam(object):
       status, resp = self.run_requests(image_url, method='GET', headers=headers)
 
       if status:
-        # Check if the camera is available
+        # Check if the camera live feed is available
         if resp.status_code == 200:
-
           try:
             # time.sleep(self.config.frame_rate/60)
             time.sleep(0.1)
 
-            with open(camera_path + '/' + file_id + '.jpg', 'wb') as image_file:
+            with open(image_path, 'wb') as image_file:
               image_file.write(resp.content)
 
-            # Add overlay text
-            overlay_text = shsplit(f"/usr/bin/convert {camera_path}/{file_id}.jpg -pointsize 36 -fill white "
-                                   f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' {camera_path}/{file_id}.jpg")
-            # print(f"<> DEBUG: overlay_text: \n {overlay_text}")
-            call(overlay_text, shell=False)
+            # Add timestamp into jpg
+            overlay_text = shsplit(f"/usr/bin/convert {image_path} -pointsize 36 -fill white "
+                                   f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' "
+                                   f"{image_path}")
+            call(overlay_text)
 
-            # Check if we need to compile a video
+            # Compile video
             if self.config.produce_video:
               camera_buffer_size = len(camera_buffer[camera['uuid']])
               print(
@@ -293,7 +292,9 @@ class FoggyCam(object):
 
               if camera_buffer_size < self.nest_camera_buffer_threshold:
                 camera_buffer[camera['uuid']].append(file_id)
+
               else:
+                camera_buffer[camera['uuid']].append(file_id)
                 camera_image_folder = os.path.join(self.local_path, camera_path)
 
                 # Build the batch of files that need to be made into a video.
@@ -315,12 +316,12 @@ class FoggyCam(object):
                   ffmpeg_path = 'ffmpeg'
                   use_terminal = True
                 else:
-                  ffmpeg_path = os.path.abspath(os.path.join(
-                    os.path.dirname(__file__), '..', 'tools', 'ffmpeg'))
+                  ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tools', 'ffmpeg'))
 
                 if use_terminal or (os.path.isfile(ffmpeg_path) and use_terminal is False):
-                  print('<> INFO: Found ffmpeg. Processing video!')
-                  target_video_path = os.path.join(video_path, self.now_time("%Y-%m-%d_%H-%M-%S") + '.mp4')
+                  print(f"<> INFO: {self.now_time()} Found ffmpeg. Processing video!")
+                  video_file_name = f"{self.now_time('%Y-%m-%d_%H-%M-%S')}.mp4"
+                  target_video_path = os.path.join(video_path, video_file_name)
                   process = Popen([
                     ffmpeg_path, '-r', str(self.config.frame_rate), '-f', 'concat', '-safe', '0', '-i',
                     concat_file_name, '-vcodec', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p',
@@ -329,14 +330,14 @@ class FoggyCam(object):
                   err, out = process.communicate()
                   # print(f"<> DEBUG: video creation \nO: {out} \nE: {err}")
                   os.remove(concat_file_name)
-                  print('<> INFO: Video processing is complete!')
+                  print(f"<> INFO: {self.now_time()} Video processing is complete!")
 
                   # Upload the video
                   storage_provider = AzureStorageProvider()
 
                   if bool(self.config.upload_to_azure):
                     print('<> INFO: Uploading to Azure Storage...')
-                    target_blob = 'foggycam/' + camera_name + '/' + file_id + '.mp4'
+                    target_blob = f"foggycam/{camera_name}/{video_file_name}"
 
                     storage_provider.upload_video(
                       account_name=self.config.az_account_name,
@@ -363,21 +364,25 @@ class FoggyCam(object):
           except Exception as img_error:
             print(f"<> ERROR: Could not get image from URL: \n {img_error} \nIs there internet connection?")
             print(f"<> DEBUG: {image_url}")
-
             traceback.print_exc()
+            
         else:
+          # camera is offline
           if resp.status_code == 404:
-            # if camera is offline
             print(f"<> WARNING: {self.now_time()} Camera recording for '{camera_name}' "
                   f"not available.")
             time.sleep(self.cam_retry_wait)
+
+          # Renew auth token
           elif resp.status_code == 403:
-            # Renew auth token
             print(f"<> DEBUG: {self.now_time()} status '{resp.reason}' token expired renewing ...")
             self.get_authorisation()
 
           else:
             print(f"<> DEBUG: Ignoring status code '({str(resp.status_code)}'")
+      else:
+        print("<> ERROR: failed to capture images")
+        exit(1)
 
 
 if __name__ == '__main__':
