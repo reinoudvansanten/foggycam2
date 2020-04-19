@@ -17,9 +17,7 @@ import requests
 from re import search as re_search
 
 
-# TODO: refactor jpg clean off (CPU intensive) with bash shell 'rm -f'
 # TODO: move image compression into a separate thread. Recording is paused while compressing and uploading video
-# TODO: option exclude cameras
 # TODO: bundle the folders creation
 # TODO: refactor to use module tempfile for directories and file names
 # TODO: retention period for files and videos
@@ -256,13 +254,12 @@ class FoggyCam(object):
       if not os.path.exists(video_path):
         os.makedirs(video_path)
 
-      image_thread = threading.Thread(target=self.perform_capture,
-                                      args=(camera, camera_name, camera_path, video_path))
-      # image_thread.daemon = True
-      image_thread.start()
-
-    # while True:
-    #   time.sleep(1)
+      if camera['uuid'] not in self.config.exclude_ids:
+        image_thread = threading.Thread(target=self.perform_capture,
+                                        args=(camera, camera_name, camera_path, video_path))
+        image_thread.start()
+      else:
+        print(f"<> INFO: '{camera_name}': Skipping recording for this camera.")
 
   def perform_capture(self, camera, camera_name, camera_path='', video_path=''):
     """Captures images and generates the video from them."""
@@ -299,15 +296,16 @@ class FoggyCam(object):
         if resp.status_code == 200:
           try:
             # time.sleep(self.config.frame_rate/60)
-            time.sleep(0.5)
+            time.sleep(1)
 
             with open(image_path, 'wb') as image_file:
               image_file.write(resp.content)
 
             # Add timestamp into jpg
             if self.convert_path:
+              current_milli_time = lambda: int(round(time.time() * 1000))
               overlay_text = shsplit(f"{self.convert_path} {image_path} -pointsize 36 -fill white "
-                                     f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' "
+                                     f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')} {current_milli_time()}' "
                                      f"{image_path}")
               call(overlay_text)
 
@@ -373,12 +371,13 @@ class FoggyCam(object):
                   for buffer_entry in camera_buffer[camera['uuid']]:
                     clean_files.append(os.path.join(camera_path, buffer_entry))
 
-                  print(f"<> INFO: Deleting {clean_files}")
+                  print(f"<> INFO: Deleting compiled images {clean_files}")
                   call(shsplit('rm -f') + shsplit(' '.join(clean_files)))
 
                 # Empty buffer, since we no longer need the file records that we're planning
                 # to compile in a video.
                 camera_buffer[camera['uuid']] = []
+                exit()
           except Exception as img_error:
             print(f"<> ERROR: {self.now_time()} {camera_name}: while getting image ... \n {img_error} \n")
             print(f"<> DEBUG: image URL {image_url}")

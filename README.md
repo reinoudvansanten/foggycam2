@@ -18,6 +18,7 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 |`threshold`|Number of images that need to be combined in a video in a single buffer.<br/><br/>Default is 200.|
 |`width`|Image width for the capture image.<br/><br/>Default is 1280.|
 |`cam_retry_wait`|Determines how long to wait once the camera has been detected offline.<br/><br/>Default is 60 seconds.|
+|`exclude_ids`|Exclude cameras by id<br/>A list of camera ids will be provided at the start of the script<br/>Example: `"exclude_ids":"['l0e5ebdad1a749b9a282a81115aa9c45', '5maa753400d54b7xa78b0fc60b5f0d0d']"`|
 |`time_stamp`|Show time and date on top left of the image <br/><br/>Default is false<br/><br/> Requires [Imagemagic](http://www.imagemagick.org/script/download.php) |
 |`clear_images`|Determines whether images are removed after video is produced.<br/><br/>Default is false.|
 |`produce_video`|Determines whether a video is generated after a threshold of captured images is hit.<br/><br/>Default is false.<br/><br/>Requires `ffmpeg`, instructions below|
