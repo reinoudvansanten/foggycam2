@@ -296,7 +296,7 @@ class FoggyCam(object):
         if resp.status_code == 200:
           try:
             # time.sleep(self.config.frame_rate/60)
-            time.sleep(3)
+            time.sleep(0.1)
 
             with open(image_path, 'wb') as image_file:
               image_file.write(resp.content)
@@ -409,7 +409,7 @@ if __name__ == '__main__':
   try:
     import json
     from collections import namedtuple
-    print("Welcome to FoggyCam 1.0 - Nest video/image capture tool")
+    print("Welcome to FoggyCam2 2.0 - Nest video/image capture tool")
 
     CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
     print(CONFIG_PATH)
@@ -418,7 +418,7 @@ if __name__ == '__main__':
 
     CAM = FoggyCam(config=CONFIG)
   except KeyboardInterrupt:
-    print("FoggyCam 1.0 - Nest video/image capture tool ended.")
+    print("FoggyCam2 2.0 - Nest video/image capture tool ended.")
 
   except Exception as gloabl_error:
     print(f"<> CRITICAL: unknown error \n {gloabl_error}")

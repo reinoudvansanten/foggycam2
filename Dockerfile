@@ -1,29 +1,22 @@
-# Pull base image.
-FROM ubuntu:16.04
+FROM python:3.8-slim
 
-# Install.
-RUN \
-  sed -i 's/# \(.*multiverse$\)/\1/g' /etc/apt/sources.list && \
-  apt-get update && \
-  apt-get -y upgrade && \
-  apt-get install -y build-essential && \
-  apt-get install -y software-properties-common && \
-  apt-get install -y byobu curl git htop man unzip vim wget && \
-  apt-get install -y ffmpeg && \
-  apt-get install -y python-pip python-dev && \
-  pip install --upgrade pip && \
-  rm -rf /var/lib/apt/lists/*
-  
-# Set environment variables.
-ENV HOME /root
+# Install
+RUN apt update \
+ && apt upgrade -y \
+ && apt install -y ffmpeg gsfonts imagemagick \
+ && rm -rf /var/lib/apt/lists/*
 
-# Define working directory.
-WORKDIR /root
+# Setup working directory
+RUN mkdir -p /usr/local/app/foggycam2/capture
+COPY src/ /usr/local/app/foggycam2
+WORKDIR /usr/local/app/foggycam2
 
-# Define default command.
-CMD ["bash"]
+RUN pip install --no-cache-dir --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
-ADD src/ ./src
-ADD config.json ./
+# Prepaire volumes
+VOLUME ["/usr/local/app/foggycam2/capture"]
+VOLUME ["/usr/local/app/config.json"]
 
-ENTRYPOINT cd src && pip install -r requirements.txt && python start.py && /bin/bash
+# Start
+CMD ["/usr/local/app/foggycam2/foggycam2.py"]
