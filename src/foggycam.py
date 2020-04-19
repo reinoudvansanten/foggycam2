@@ -15,6 +15,7 @@ from azurestorageprovider import AzureStorageProvider
 import shutil
 import requests
 from re import search as re_search
+import tempfile
 
 # TODO: check if magicstick tool is available and move out the check for ffmpeg and "skip" tool usage where needed
 # TODO: refactor jpg clean off (CPU intensive) with bash shell 'rm -f'
@@ -63,9 +64,38 @@ class FoggyCam(object):
     self.temp_dir_path = os.path.join(self.local_path, '_temp')
     self.nest_camera_buffer_threshold = self.config.threshold or self.nest_camera_buffer_threshold
 
+    self.ffmpeg_path = False
+
+    self.time_stamp = self.config.time_stamp or False
+    self.convert_path = False
+
+    self.check_tools()
     self.get_authorisation()
     self.initialize_user()
     self.capture_images()
+
+  def check_tools(self):
+    imagemagic = shutil.which("convert")
+
+    if self.config.produce_video:
+      ffmpeg_tool_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tools', 'ffmpeg'))
+      ffmpeg_local_path = shutil.which("ffmpeg")
+
+      if ffmpeg_local_path:
+        self.ffmpeg_path = ffmpeg_local_path
+      elif os.path.isfile(ffmpeg_tool_path):
+        self.ffmpeg_path = ffmpeg_tool_path
+      else:
+        print(f"<> WARNING: could not find 'ffmpeg' skipping image to video compression. Try installing it:\n"
+            f"On Debian try: 'sudo apt-get install ffmpeg'\n"
+            f"On MacOS try: 'brew install ffmpeg'")
+
+    if self.time_stamp and imagemagic:
+      self.convert_path = imagemagic
+    else:
+      print(f"<> WARNING: could not find '/usr/bin/convert' skip applying time stamp. Try installing it:\n"
+            f"On Debian try: 'sudo apt-get install imagemagick'\n"
+            f"On MacOS try: 'brew install imagemagick ghostscript'")
 
   @staticmethod
   def run_requests(url, method, headers=None, params=None, payload=None):
@@ -208,8 +238,6 @@ class FoggyCam(object):
       os.makedirs('capture')
 
     for camera in self.nest_camera_array:
-      camera_path = ''
-      video_path = ''
       camera_name = camera['name'] or camera['uuid']
 
       # Determine whether the entries should be copied to a custom path
@@ -277,13 +305,14 @@ class FoggyCam(object):
               image_file.write(resp.content)
 
             # Add timestamp into jpg
-            overlay_text = shsplit(f"/usr/bin/convert {image_path} -pointsize 36 -fill white "
-                                   f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' "
-                                   f"{image_path}")
-            call(overlay_text)
+            if self.convert_path:
+              overlay_text = shsplit(f"{self.convert_path} {image_path} -pointsize 36 -fill white "
+                                     f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' "
+                                     f"{image_path}")
+              call(overlay_text)
 
             # Compile video
-            if self.config.produce_video:
+            if self.ffmpeg_path:
               camera_buffer_size = len(camera_buffer[camera['uuid']])
               print(
                 f"<> INFO: {self.now_time()} [ {threading.current_thread().name} ] "
@@ -297,66 +326,53 @@ class FoggyCam(object):
                 camera_buffer[camera['uuid']].append(file_id)
                 camera_image_folder = os.path.join(self.local_path, camera_path)
 
-                # Build the batch of files that need to be made into a video.
+                # Add the batch of .jpg files that need to be made into a video.
                 file_declaration = ''
                 for buffer_entry in camera_buffer[camera['uuid']]:
-                  file_declaration = file_declaration + 'file \'' + camera_image_folder + '/' + buffer_entry + '.jpg\'\n'
+                  file_declaration = f"{file_declaration}file '{camera_image_folder}/{buffer_entry}.jpg'\n"
                 concat_file_name = os.path.join(self.temp_dir_path, camera['uuid'] + '.txt')
 
-                # Make sure that the content is decoded
-
+                # Write to file image list to be compressed into video
                 with open(concat_file_name, 'w') as declaration_file:
                   declaration_file.write(file_declaration)
 
-                # Check if we have ffmpeg locally
-                use_terminal = False
-                ffmpeg_path = ''
+                print(f"<> INFO: {self.now_time()} Processing video!")
+                video_file_name = f"{self.now_time('%Y-%m-%d_%H-%M-%S')}.mp4"
+                target_video_path = os.path.join(video_path, video_file_name)
 
-                if shutil.which("ffmpeg"):
-                  ffmpeg_path = 'ffmpeg'
-                  use_terminal = True
-                else:
-                  ffmpeg_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'tools', 'ffmpeg'))
+                process = Popen(
+                  [self.ffmpeg_path, '-r', str(self.config.frame_rate), '-f', 'concat', '-safe', '0', '-i',
+                   concat_file_name, '-vcodec', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p',
+                   target_video_path],
+                  close_fds=False, start_new_session=True, stdout=PIPE, stderr=PIPE
+                )
 
-                if use_terminal or (os.path.isfile(ffmpeg_path) and use_terminal is False):
-                  print(f"<> INFO: {self.now_time()} Found ffmpeg. Processing video!")
-                  video_file_name = f"{self.now_time('%Y-%m-%d_%H-%M-%S')}.mp4"
-                  target_video_path = os.path.join(video_path, video_file_name)
-                  process = Popen([
-                    ffmpeg_path, '-r', str(self.config.frame_rate), '-f', 'concat', '-safe', '0', '-i',
-                    concat_file_name, '-vcodec', 'libx264', '-crf', '25', '-pix_fmt', 'yuv420p',
-                    target_video_path
-                  ], close_fds=False, start_new_session=True, stdout=PIPE, stderr=PIPE)
-                  err, out = process.communicate()
-                  # print(f"<> DEBUG: video creation \nO: {out} \nE: {err}")
-                  os.remove(concat_file_name)
-                  print(f"<> INFO: {self.now_time()} Video processing is complete!")
+                process.communicate()
+                # os.remove(concat_file_name)
+                print(f"<> INFO: {self.now_time()} Video processing is complete!")
 
-                  # Upload the video
-                  storage_provider = AzureStorageProvider()
+                # Upload the video
+                storage_provider = AzureStorageProvider()
+                if self.config.upload_to_azure:
+                  print('<> INFO: Uploading to Azure Storage...')
+                  target_blob = f"foggycam/{camera_name}/{video_file_name}"
 
-                  if bool(self.config.upload_to_azure):
-                    print('<> INFO: Uploading to Azure Storage...')
-                    target_blob = f"foggycam/{camera_name}/{video_file_name}"
+                  storage_provider.upload_video(
+                    account_name=self.config.az_account_name,
+                    sas_token=self.config.az_sas_token,
+                    container='foggycam',
+                    blob=target_blob,
+                    path=target_video_path
+                  )
+                  print('<> INFO: Upload complete.')
 
-                    storage_provider.upload_video(
-                      account_name=self.config.az_account_name,
-                      sas_token=self.config.az_sas_token,
-                      container='foggycam',
-                      blob=target_blob,
-                      path=target_video_path
-                    )
-                    print('<> INFO: Upload complete.')
-
-                  # If the user specified the need to remove images post-processing
-                  # then clear the image folder from images in the buffer.
-                  if self.config.clear_images:
-                    for buffer_entry in camera_buffer[camera['uuid']]:
-                      deletion_target = os.path.join(camera_path, buffer_entry + '.jpg')
-                      print('<> INFO: Deleting ' + deletion_target)
-                      os.remove(deletion_target)
-                else:
-                  print('<> WARNING: No ffmpeg detected. Make sure the binary is in /tools.')
+                # If the user specified the need to remove images post-processing
+                # then clear the image folder from images in the buffer.
+                if self.config.clear_images:
+                  for buffer_entry in camera_buffer[camera['uuid']]:
+                    deletion_target = os.path.join(camera_path, buffer_entry + '.jpg')
+                    print('<> INFO: Deleting ' + deletion_target)
+                    os.remove(deletion_target)
 
                 # Empty buffer, since we no longer need the file records that we're planning
                 # to compile in a video.
@@ -386,13 +402,19 @@ class FoggyCam(object):
 
 
 if __name__ == '__main__':
-  import json
-  from collections import namedtuple
-  print('Welcome to FoggyCam 1.0 - Nest video/image capture tool')
+  try:
+    import json
+    from collections import namedtuple
+    print("Welcome to FoggyCam 1.0 - Nest video/image capture tool")
 
-  CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
-  print(CONFIG_PATH)
+    CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'config.json'))
+    print(CONFIG_PATH)
 
-  CONFIG = json.load(open(CONFIG_PATH), object_hook=lambda d: namedtuple('X', d.keys())(*d.values()))
+    CONFIG = json.load(open(CONFIG_PATH), object_hook=lambda d: namedtuple('X', d.keys())(*d.values()))
 
-  CAM = FoggyCam(config=CONFIG)
+    CAM = FoggyCam(config=CONFIG)
+  except KeyboardInterrupt:
+    print("FoggyCam 1.0 - Nest video/image capture tool ended.")
+
+  except Exception as gloabl_error:
+    print(f"<> CRITICAL: unknown error \n {gloabl_error}")
