@@ -377,7 +377,6 @@ class FoggyCam(object):
                 # Empty buffer, since we no longer need the file records that we're planning
                 # to compile in a video.
                 camera_buffer[camera['uuid']] = []
-                exit()
           except Exception as img_error:
             print(f"<> ERROR: {self.now_time()} {camera_name}: while getting image ... \n {img_error} \n")
             print(f"<> DEBUG: image URL {image_url}")
