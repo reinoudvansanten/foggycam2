@@ -299,7 +299,7 @@ class FoggyCam(object):
         if resp.status_code == 200:
           try:
             # time.sleep(self.config.frame_rate/60)
-            time.sleep(0.1)
+            time.sleep(0.5)
 
             with open(image_path, 'wb') as image_file:
               image_file.write(resp.content)
@@ -396,8 +396,14 @@ class FoggyCam(object):
             print(f"<> DEBUG: {self.now_time()} status '{resp.reason}' token expired renewing ...")
             self.get_authorisation()
 
+          elif resp.status_code == 500:
+            sleep_time = 30
+            print(f"<> DEBUG: {self.now_time()} '{resp.reason}' ... failure received sleeping for "
+                  f"{sleep_time} seconds.")
+            time.sleep(sleep_time)
+
           else:
-            print(f"<> DEBUG: Ignoring status code '({str(resp.status_code)}'")
+            print(f"<> DEBUG: {self.now_time()} Ignoring status code '{resp.status_code}'")
       else:
         print("<> ERROR: failed to capture images")
         exit(1)
