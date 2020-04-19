@@ -44,7 +44,30 @@ On macOS, you can install `ffmpeg` through [Homebrew](https://brew.sh):
 brew install ffmpeg
 ```
 
-## How To Start
+## Dockerfile How To Start
+
+Change directory into project
+```
+cd foggycam2
+```
+
+Build Docker image
+```
+docker build -t foggycam2:latest .
+```
+
+Start Docker container
+```
+docker run -d --name foggcam2 \
+    -v [/full/path/to/capture/location]:/usr/local/app/capture/ \
+    -v [/full/path/to/your/config/file/config.json]:/usr/local/config.json foggycam2:latest
+```
+Be sure to replace above the path to recording folder
+`[/full/path/to/capture/location]`
+and configuration file
+`[/full/path/to/your/config/file/config.json]`
+
+## Local How To Start
 
 Make sure you install the requirements for the project, by `cd`-ing in the folder with the project, and running:
 
