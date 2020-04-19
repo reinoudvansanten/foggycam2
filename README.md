@@ -53,7 +53,9 @@ and configuration file
 `[/full/path/to/your/config/file/config.json]`
 
 ## How To Start locally
+
 **`ffmpeg` is required generate video**, [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
+
 **ImageMagic is required to apply timestamp on images** [download ImageMagic](http://www.imagemagick.org/script/download.php) `tools` folder not supported in this case.
 
 Alternatively, if you are on Linux, you can install `ffmpeg` with the help of the following command:
