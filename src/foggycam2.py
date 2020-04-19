@@ -336,7 +336,7 @@ class FoggyCam(object):
                 with open(concat_file_name, 'w') as declaration_file:
                   declaration_file.write(file_declaration)
 
-                print(f"<> INFO: {self.now_time()} Processing video!")
+                print(f"<> INFO: {self.now_time()} {camera_name}: Processing video!")
                 video_file_name = f"{self.now_time('%Y-%m-%d_%H-%M-%S')}.mp4"
                 target_video_path = os.path.join(video_path, video_file_name)
 
@@ -349,7 +349,7 @@ class FoggyCam(object):
 
                 process.communicate()
                 os.remove(concat_file_name)
-                print(f"<> INFO: {self.now_time()} Video processing is complete!")
+                print(f"<> INFO: {self.now_time()} {camera_name}: Video processing is complete!")
 
                 # Upload the video
                 storage_provider = AzureStorageProvider()
@@ -380,32 +380,31 @@ class FoggyCam(object):
                 # to compile in a video.
                 camera_buffer[camera['uuid']] = []
           except Exception as img_error:
-            print(f"<> ERROR: while getting image ... \n {img_error} \n")
+            print(f"<> ERROR: {self.now_time()} {camera_name}: while getting image ... \n {img_error} \n")
             print(f"<> DEBUG: image URL {image_url}")
             traceback.print_exc()
             
         else:
           # camera is offline
           if resp.status_code == 404:
-            print(f"<> WARNING: {self.now_time()} Camera recording for '{camera_name}' "
-                  f"not available.")
+            print(f"<> WARNING: {self.now_time()} {camera_name}: recording not available.")
             time.sleep(self.cam_retry_wait)
 
           # Renew auth token
           elif resp.status_code == 403:
-            print(f"<> DEBUG: {self.now_time()} status '{resp.reason}' token expired renewing ...")
+            print(f"<> DEBUG: {self.now_time()} {camera_name}: status '{resp.reason}' token expired renewing ...")
             self.get_authorisation()
 
           elif resp.status_code == 500:
             sleep_time = 30
-            print(f"<> DEBUG: {self.now_time()} '{resp.reason}' ... failure received sleeping for "
+            print(f"<> DEBUG: {self.now_time()} {camera_name}: '{resp.reason}' ... failure received sleeping for "
                   f"{sleep_time} seconds.")
             time.sleep(sleep_time)
 
           else:
-            print(f"<> DEBUG: {self.now_time()} Ignoring status code '{resp.status_code}'")
+            print(f"<> DEBUG: {self.now_time()} {camera_name}: Ignoring status code '{resp.status_code}'")
       else:
-        print("<> ERROR: failed to capture images")
+        print(f"<> ERROR: {camera_name}: failed to capture images")
         exit(1)
 
 
