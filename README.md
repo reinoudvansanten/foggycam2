@@ -61,13 +61,14 @@ and configuration file
 Alternatively, if you are on Linux, you can install `ffmpeg` with the help of the following command:
 
 ```
-sudo apt-get install ffmpeg
+sudo apt-get install ffmpeg imagemagick
 ```
 
-On macOS, you can install `ffmpeg` through [Homebrew](https://brew.sh):
+On macOS, you can install `ffmpeg` and ImageMagic  through [Homebrew](https://brew.sh):
 
 ```
-brew install ffmpeg
+# ghostscript is required by imagemagick
+brew install ffmpeg imagemagick ghostscript
 ```
 
 Change directory into project
