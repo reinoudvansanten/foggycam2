@@ -1,7 +1,5 @@
 # 📹 foggycam
 
-![Build Status](https://travis-ci.org/dend/foggycam.svg?branch=master)
-
 A tool to capture Nest video streams locally or to the Azure cloud, even for users without a Nest subscription. The current release is tested on macOS. Windows and Linux adaptations coming soon (minor tweaks required).
 
 >**NOTE:** Audio recording is currently not supported.
@@ -12,7 +10,7 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 
 |Parameter|Description|
 |-----|-----|
-|`issueToken`|Instructions of how to obtain them are [here](https://github.com/chrisjshull/homebridge-nest#using-a-google-account)<br/><br/ **This will have to be one only once**|
+|`issueToken`|Instructions of how to obtain them are [here](https://github.com/chrisjshull/homebridge-nest#using-a-google-account)<br/><br/> **This will have to be one only once**|
 |`cookies`|Same as above |
 |`apiKey`|Same as above |
 |`path`|Absolute path to local folder where content needs to be stored.<br/><br/>Default is the script path.|
@@ -20,13 +18,14 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 |`threshold`|Number of images that need to be combined in a video in a single buffer.<br/><br/>Default is 200.|
 |`width`|Image width for the capture image.<br/><br/>Default is 1280.|
 |`cam_retry_wait`|Determines how long to wait once the camera has been detected offline.<br/><br/>Default is 60 seconds.|
+|`time_stamp`|Show time and date on top left of the image <br/><br/>Default is false<br/><br/> Requires [Imagemagic](http://www.imagemagick.org/script/download.php) |
 |`clear_images`|Determines whether images are removed after video is produced.<br/><br/>Default is false.|
-|`produce_video`|Determines whether a video is generated after a threshold of captured images is hit.<br/><br/>Default is false.|
+|`produce_video`|Determines whether a video is generated after a threshold of captured images is hit.<br/><br/>Default is false.<br/><br/>Requires `ffmpeg`, instructions below|
 |`upload_to_azure`|Determines whether the final video will be uploaded to Azure Storage.<br/><br/>Default is false.|
 |`az_account_name`|Name of the Azure Storage account.|
 |`az_sas_token`|SAS token for the Azure Storage account. Should have `write`, `list` and `read` permissions.|
 
-**Note** Camera labels will be used if available! 
+>**Note:** Camera labels will be used for directory name if available! 
 
 **If you want to generate video**, you will need to [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
 
