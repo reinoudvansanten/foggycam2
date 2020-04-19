@@ -25,7 +25,7 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 |`az_account_name`|Name of the Azure Storage account.|
 |`az_sas_token`|SAS token for the Azure Storage account. Should have `write`, `list` and `read` permissions.|
 
-**Note:** Camera labels will be used for directory name if available! 
+>**Note:** Camera labels will be used for directory name if available! 
 
 **If you want to generate video**, you will need to [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
 
