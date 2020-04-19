@@ -296,16 +296,15 @@ class FoggyCam(object):
         if resp.status_code == 200:
           try:
             # time.sleep(self.config.frame_rate/60)
-            time.sleep(1)
+            time.sleep(3)
 
             with open(image_path, 'wb') as image_file:
               image_file.write(resp.content)
 
             # Add timestamp into jpg
             if self.convert_path:
-              current_milli_time = lambda: int(round(time.time() * 1000))
               overlay_text = shsplit(f"{self.convert_path} {image_path} -pointsize 36 -fill white "
-                                     f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')} {current_milli_time()}' "
+                                     f"-stroke black -annotate +40+40 '{self.now_time('%Y-%m-%d %H:%M:%S')}' "
                                      f"{image_path}")
               call(overlay_text)
 
