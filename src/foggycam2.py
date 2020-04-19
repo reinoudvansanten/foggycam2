@@ -15,13 +15,13 @@ from azurestorageprovider import AzureStorageProvider
 import shutil
 import requests
 from re import search as re_search
-import tempfile
 
-# TODO: check if magicstick tool is available and move out the check for ffmpeg and "skip" tool usage where needed
+
 # TODO: refactor jpg clean off (CPU intensive) with bash shell 'rm -f'
-# TODO: move image compression into a separate threed as recording is posed while compressing
-# TODO: exclude cameras
+# TODO: move image compression into a separate thread. Recording is paused while compressing and uploading video
+# TODO: option exclude cameras
 # TODO: bundle the folders creation
+# TODO: refactor to use module tempfile for directories and file names
 # TODO: retention period for files and videos
 # TODO: add logs and restructure printing
 
@@ -273,8 +273,8 @@ class FoggyCam(object):
                                                       ).replace('#REGION#', camera['region'])
 
     while self.is_capturing:
-      file_id = str(uuid.uuid4().hex)
-      image_path = f"{camera_path}/{file_id}.jpg"
+      file_id = f"{str(uuid.uuid4().hex)}.jpg"
+      image_path = f"{camera_path}/{file_id}"
       utc_date = datetime.utcnow()
       utc_millis_str = str(int(utc_date.timestamp())*1000)
 
@@ -329,7 +329,7 @@ class FoggyCam(object):
                 # Add the batch of .jpg files that need to be made into a video.
                 file_declaration = ''
                 for buffer_entry in camera_buffer[camera['uuid']]:
-                  file_declaration = f"{file_declaration}file '{camera_image_folder}/{buffer_entry}.jpg'\n"
+                  file_declaration = f"{file_declaration}file '{camera_image_folder}/{buffer_entry}'\n"
                 concat_file_name = os.path.join(self.temp_dir_path, camera['uuid'] + '.txt')
 
                 # Write to file image list to be compressed into video
@@ -348,7 +348,7 @@ class FoggyCam(object):
                 )
 
                 process.communicate()
-                # os.remove(concat_file_name)
+                os.remove(concat_file_name)
                 print(f"<> INFO: {self.now_time()} Video processing is complete!")
 
                 # Upload the video
@@ -369,17 +369,19 @@ class FoggyCam(object):
                 # If the user specified the need to remove images post-processing
                 # then clear the image folder from images in the buffer.
                 if self.config.clear_images:
+                  clean_files = []
                   for buffer_entry in camera_buffer[camera['uuid']]:
-                    deletion_target = os.path.join(camera_path, buffer_entry + '.jpg')
-                    print('<> INFO: Deleting ' + deletion_target)
-                    os.remove(deletion_target)
+                    clean_files.append(os.path.join(camera_path, buffer_entry))
+
+                  print(f"<> INFO: Deleting {clean_files}")
+                  call(shsplit('rm -f') + shsplit(' '.join(clean_files)))
 
                 # Empty buffer, since we no longer need the file records that we're planning
                 # to compile in a video.
                 camera_buffer[camera['uuid']] = []
           except Exception as img_error:
-            print(f"<> ERROR: Could not get image from URL: \n {img_error} \nIs there internet connection?")
-            print(f"<> DEBUG: {image_url}")
+            print(f"<> ERROR: while getting image ... \n {img_error} \n")
+            print(f"<> DEBUG: image URL {image_url}")
             traceback.print_exc()
             
         else:
