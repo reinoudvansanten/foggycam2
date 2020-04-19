@@ -19,7 +19,7 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 |`width`|Image width for the capture image.<br/><br/>Default is 1280.|
 |`cam_retry_wait`|Determines how long to wait once the camera has been detected offline.<br/><br/>Default is 60 seconds.|
 |`exclude_ids`|Exclude cameras by id<br/><br/>A list of camera ids will be provided at the start of the script<br/><br/>Example: `"exclude_ids":"['l0e5ebdad1a749b9a282a81115aa9c45', '5maa753400d54b7xa78b0fc60b5f0d0d']"`|
-|`time_stamp`|Show time and date on top left of the image <br/><br/>Default is false<br/><br/> Requires [Imagemagic](http://www.imagemagick.org/script/download.php) |
+|`time_stamp`|Show time and date on top left of the image <br/><br/>Default is false<br/><br/> Requires [download Imagemagic](http://www.imagemagick.org/script/download.php) |
 |`clear_images`|Determines whether images are removed after video is produced.<br/><br/>Default is false.|
 |`produce_video`|Determines whether a video is generated after a threshold of captured images is hit.<br/><br/>Default is false.<br/><br/>Requires `ffmpeg`, instructions below|
 |`upload_to_azure`|Determines whether the final video will be uploaded to Azure Storage.<br/><br/>Default is false.|
@@ -29,22 +29,7 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 
 >**NOTE:** Camera labels will be used for directory name if available! 
 
-
-**If you want to generate video**, you will need to [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
-
-Alternatively, if you are on Linux, you can install `ffmpeg` with the help of the following command:
-
-```
-sudo apt-get install ffmpeg
-```
-
-On macOS, you can install `ffmpeg` through [Homebrew](https://brew.sh):
-
-```
-brew install ffmpeg
-```
-
-## Dockerfile How To Start
+## How To Start with Docker
 
 Change directory into project
 ```
@@ -67,9 +52,26 @@ Be sure to replace above the path to recording folder
 and configuration file
 `[/full/path/to/your/config/file/config.json]`
 
-## Local How To Start
+## How To Start locally
+**`ffmpeg` is required generate video**, [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
+**ImageMagic is required to apply timestamp on images** [download ImageMagic](http://www.imagemagick.org/script/download.php) `tools` folder not supported in this case.
 
-Make sure you install the requirements for the project, by `cd`-ing in the folder with the project, and running:
+Alternatively, if you are on Linux, you can install `ffmpeg` with the help of the following command:
+
+```
+sudo apt-get install ffmpeg
+```
+
+On macOS, you can install `ffmpeg` through [Homebrew](https://brew.sh):
+
+```
+brew install ffmpeg
+```
+
+Change directory into project
+```
+cd foggycam2
+```
 
 ```
 pip3 install -r src/requirements.txt
