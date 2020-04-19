@@ -25,7 +25,9 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 |`az_account_name`|Name of the Azure Storage account.|
 |`az_sas_token`|SAS token for the Azure Storage account. Should have `write`, `list` and `read` permissions.|
 
+
 >**NOTE:** Camera labels will be used for directory name if available! 
+
 
 **If you want to generate video**, you will need to [download `ffmpeg`](https://www.ffmpeg.org/download.html) and place it in the `tools` folder, in the script root directory.
 
@@ -59,7 +61,9 @@ No claims are made in regards to the stability of the application, or its applic
 
 ## Troubleshooting
 
-## Getting `urlopen error [SSL: CERTIFICATE_VERIFY_FAILED]`
+#### Docker file is work in progress
+
+#### Getting `urlopen error [SSL: CERTIFICATE_VERIFY_FAILED]`
 
 On macOS, run  `pip install certifi` and then `/Applications/Python\ 3.6/Install\ Certificates.command`.
 
