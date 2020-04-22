@@ -31,6 +31,8 @@ Rename `_config.json` to `config.json` and specify the following parameters:
 
 ## How To Start with Docker
 
+**NOTE:** if you use docker do not change the capture location unless you know what you're doing
+
 Change directory into project
 ```
 cd foggycam2
@@ -44,7 +46,7 @@ docker build -t foggycam2:latest .
 Start Docker container
 ```
 docker run -d --name foggcam2 \
-    -v [/full/path/to/capture/location]:/usr/local/app/capture/ \
+    -v [/full/path/to/capture/location]:/usr/local/app/foggycam2/capture/ \
     -v [/full/path/to/your/config/file/config.json]:/usr/local/app/config.json foggycam2:latest
 ```
 Be sure to replace above the path to recording folder
