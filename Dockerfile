@@ -4,6 +4,7 @@ FROM python:3.8-slim
 RUN apt update \
  && apt upgrade -y \
  && apt install -y ffmpeg gsfonts imagemagick \
+ && apt install -y  build-essential libssl-dev libffi-dev python-dev-is-python3 python3-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # Setup working directory
